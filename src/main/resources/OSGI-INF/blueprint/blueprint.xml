@@ -1,0 +1,161 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<blueprint xmlns="http://www.osgi.org/xmlns/blueprint/v1.0.0"
+    xmlns:cxf="http://camel.apache.org/schema/blueprint/cxf"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http:/camel.apache.org/schema/blueprint/cxf http://camel.apache.org/schema/blueprint/cxf/camel-cxf.xsd  http://www.osgi.org/xmlns/blueprint/v1.0.0 https://www.osgi.org/xmlns/blueprint/v1.0.0/blueprint.xsd                            http://camel.apache.org/schema/blueprint http://camel.apache.org/schema/blueprint/camel-blueprint.xsd">
+    <!-- <cxf:cxfEndpoint
+        address="http://aplicaciones-desa.bicevida.cl/si12/MandatoSAM/ServicioSAMPort"
+        endpointName="s:ServicioSAMPort" id="cxfMandatoSAMWs"
+        serviceName="s:ServicioSAMService"
+        wsdlURL="http://aplicaciones-desa.bicevida.cl/si12/MandatoSAM/ServicioSAMPort?wsdl" xmlns:s="http://ws.vista.sam.vida.bice.cl/">
+        <cxf:properties>
+            <entry key="dataFormat" value="MESSAGE"/>
+        </cxf:properties>
+    </cxf:cxfEndpoint>-->
+    <bean class="cl.bicevida.processor.AutorizacionProcessResponse" id="valAutPr"/>
+    <bean class="cl.bicevida.processor.ObtieneProductoProcessResponse" id="obProPr"/>
+    <bean class="cl.bicevida.processor.ValFormularioProcessResponse" id="valFormPr"/>
+    <bean class="cl.bicevida.processor.EnviaEmailProcessResponse" id="eePr"/>
+    <bean class="cl.bicevida.processor.ExceptionProcessor" id="exPr"/>
+    <camelContext id="_contextMandato" xmlns="http://camel.apache.org/schema/blueprint">
+        <propertyPlaceholder id="properties" location="classpath:/configurationbice.properties"/>
+        <onException>
+            <exception>java.lang.Exception</exception>
+            <handled>
+                <simple>true</simple>
+            </handled>
+            <process id="proEX" ref="exPr"/>
+            <marshal id="_marshal_Ex">
+                <json id="_json_Ex" library="Jackson"/>
+            </marshal>
+        </onException>
+        <restConfiguration component="restlet" port="{{middleware.mandatopat.puerto}}"/>
+        <rest path="/bicevida/boton/pago" produces="application/json">
+            <get uri="/services/ping">
+                <route>
+                    <log id="_logOK" message="PING OK [bv-mandato-pat]"/>
+                </route>
+            </get>
+            <post outType="java.lang.String" produces="application/json"
+                type="cl.bicevida.object.InObtieneProducto" uri="/obtenerDetalleProductos/">
+                <to uri="direct:obtenerDetalleProductos"/>
+            </post>
+            <post outType="java.lang.String" produces="application/json"
+                type="cl.bicevida.object.InValFormulario" uri="/validaFormulario/">
+                <to uri="direct:validaFormulario"/>
+            </post>
+            <post outType="java.lang.String" produces="application/json"
+                type="cl.bicevida.object.InEnvioCorreo" uri="/enviaCorreo/">
+                <to uri="direct:enviaCorreo"/>
+            </post>
+            <get outType="java.lang.String" produces="application/json" uri="/bancosTarjeta/">
+                <to uri="direct:bancoTarjeta"/>
+            </get>
+            <get outType="java.lang.String" produces="application/json" uri="/tipoTarjeta/">
+                <to uri="direct:tipoTarjeta"/>
+            </get>
+            <post outType="java.lang.String" produces="application/json"
+                type="cl.bice.vida.sam.vista.ws.MandatoDtoIn" uri="/validaAutorizacion/">
+                <to uri="direct:validaAutorizacion"/>
+            </post>
+        </rest>
+        <route id="_routeObtenerProductos">
+            <from id="_direct:obtenerDetalleProductos" uri="direct:obtenerDetalleProductos"/>
+            <log id="_log_obtProd" message="${body}"/>
+            <setHeader headerName="Content-Type" id="_setHeader1">
+                <simple>application/json</simple>
+            </setHeader>
+            <unmarshal id="_unmarshalObtPro">
+                <json id="unJSonObtPro" library="Jackson" unmarshalTypeName="cl.bicevida.object.InObtieneProducto"/>
+            </unmarshal>
+            <process id="prOBPRO" ref="obProPr"/>
+            <marshal id="_marshal_obtProd">
+                <json id="_json_obtProd" library="Jackson"/>
+            </marshal>
+        </route>
+        <route id="_routeValidaFormulario">
+            <from id="_direct:validaFormulario" uri="direct:validaFormulario"/>
+            <setHeader headerName="Content-Type" id="_setHeader2">
+                <simple>application/json</simple>
+            </setHeader>
+            <unmarshal id="_unmarshal1">
+                <json id="unJSon" library="Jackson" unmarshalTypeName="cl.bicevida.object.InValFormulario"/>
+            </unmarshal>
+            <log id="_log_valForma" message="${body}"/>
+            <process id="val_FormPr" ref="valFormPr"/>
+            <log id="_log_valForm" message="${body}"/>
+            <marshal id="_marshal_valForm">
+                <json id="_json_valForm" library="Jackson"/>
+            </marshal>
+        </route>
+        <route id="_routeEnviaCorreo">
+            <from id="_direct:enviaCorreo" uri="direct:enviaCorreo"/>
+            <setHeader headerName="Content-Type" id="_setHeader3">
+                <simple>application/json</simple>
+            </setHeader>
+            <unmarshal id="_unmarshal1EnvC">
+                <json id="unJSonEnvC" library="Jackson" unmarshalTypeName="cl.bicevida.object.InEnvioCorreo"/>
+            </unmarshal>
+            <log id="_log_envCorreo" message="${body}"/>
+            <process id="enEPr" ref="eePr"/>
+            <marshal id="_marshal_envCorreo">
+                <json id="_json_envCorreo" library="Jackson"/>
+            </marshal>
+        </route>
+        <route id="_routeBancoTarjeta">
+            <from id="_direct:bancoTarjeta" uri="direct:bancoTarjeta"/>
+            <log id="_log_bancTarjeta" message="${body}"/>
+            <setBody id="_setBodybancTarjeta">
+                <simple>${null}</simple>
+            </setBody>
+            <to id="callBancTarjeta" uri="{{ohs.url}}/{{cluster.si}}/WSMandatoPatVentaOnline/rest/MandatoPatVentaOnline/bancosTarjeta?bridgeEndpoint=true"/>
+            <convertBodyTo id="_convertBody_bancTarjeta" type="java.lang.String"/>
+            <unmarshal id="_unmarshal_BancTarjeta">
+                <jaxb contextPath="cl.bicevida.types"
+                    partClass="cl.bicevida.types.ResponseBancosTarjeta" prettyPrint="true"/>
+            </unmarshal>
+            <setHeader headerName="Content-Type" id="_setHeader4">
+                <simple>application/json</simple>
+            </setHeader>
+            <marshal id="_marshal_bancTarjeta">
+                <json id="_json_bancTarjeta" library="Jackson"/>
+            </marshal>
+        </route>
+        <route id="_routeTipoTarjeta">
+            <from id="_direct:tipoTarjeta" uri="direct:tipoTarjeta"/>
+            <log id="_log_TipoTarjeta" message="${body}"/>
+            <setBody id="_setBodyTipoTarjeta">
+                <simple>${null}</simple>
+            </setBody>
+            <to id="callTipoTarjeta" uri="{{ohs.url}}/{{cluster.si}}/WSMandatoPatVentaOnline/rest/MandatoPatVentaOnline/tipoTarjeta?bridgeEndpoint=true"/>
+            <convertBodyTo id="_convertBody_TipoTarjeta" type="java.lang.String"/>
+            <unmarshal id="_unmarshal_TipoTarjeta">
+                <jaxb contextPath="cl.bicevida.types"
+                    partClass="cl.bicevida.types.ResponseTiposTarjeta" prettyPrint="true"/>
+            </unmarshal>
+            <setHeader headerName="Content-Type" id="_setHeader5">
+                <simple>application/json</simple>
+            </setHeader>
+            <marshal id="_marshal_TipoTarjeta">
+                <json id="_json_TipoTarjeta" library="Jackson"/>
+            </marshal>
+        </route>
+        <route id="_routeValidaAutorizacion">
+            <from id="_direct:validaAutorizacion" uri="direct:validaAutorizacion"/>
+            <setHeader headerName="Content-Type" id="_setHeader6">
+                <simple>application/json</simple>
+            </setHeader>
+            <unmarshal id="_unmarshalval">
+                <json id="unJsonval" library="Jackson" unmarshalTypeName="cl.bice.vida.sam.vista.ws.MandatoDtoIn"/>
+            </unmarshal>
+            <log id="_log_valA" message="${body}"/>
+            <convertBodyTo id="cbtValA" type="cl.bice.vida.sam.vista.ws.MandatoDtoIn"/>
+            <process id="valAutPr1" ref="valAutPr"/>
+            <setHeader headerName="Content-Type" id="_setHeader7">
+                <simple>application/json</simple>
+            </setHeader>
+            <marshal id="_marshal_valAut">
+                <json id="_json_valAut" library="Jackson"/>
+            </marshal>
+        </route>
+    </camelContext>
+</blueprint>
