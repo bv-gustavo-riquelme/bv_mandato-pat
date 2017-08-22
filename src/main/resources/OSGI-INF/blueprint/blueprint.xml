@@ -28,38 +28,8 @@
                 <json id="_json_Ex" library="Jackson"/>
             </marshal>
         </onException>
-        <restConfiguration component="restlet" port="{{middleware.mandatopat.puerto}}"/>
-        <rest path="/bicevida/boton/pago" produces="application/json">
-            <get uri="/services/ping">
-                <route>
-                    <log id="_logOK" message="PING OK [bv-mandato-pat]"/>
-                </route>
-            </get>
-            <post outType="java.lang.String" produces="application/json"
-                type="cl.bicevida.object.InObtieneProducto" uri="/obtenerDetalleProductos/">
-                <to uri="direct:obtenerDetalleProductos"/>
-            </post>
-            <post outType="java.lang.String" produces="application/json"
-                type="cl.bicevida.object.InValFormulario" uri="/validaFormulario/">
-                <to uri="direct:validaFormulario"/>
-            </post>
-            <post outType="java.lang.String" produces="application/json"
-                type="cl.bicevida.object.InEnvioCorreo" uri="/enviaCorreo/">
-                <to uri="direct:enviaCorreo"/>
-            </post>
-            <get outType="java.lang.String" produces="application/json" uri="/bancosTarjeta/">
-                <to uri="direct:bancoTarjeta"/>
-            </get>
-            <get outType="java.lang.String" produces="application/json" uri="/tipoTarjeta/">
-                <to uri="direct:tipoTarjeta"/>
-            </get>
-            <post outType="java.lang.String" produces="application/json"
-                type="cl.bice.vida.sam.vista.ws.MandatoDtoIn" uri="/validaAutorizacion/">
-                <to uri="direct:validaAutorizacion"/>
-            </post>
-        </rest>
         <route id="_routeObtenerProductos">
-            <from id="_direct:obtenerDetalleProductos" uri="direct:obtenerDetalleProductos"/>
+            <from id="_from1" uri="direct-vm:obtenerDetalleProductos"/>
             <log id="_log_obtProd" message="${body}"/>
             <setHeader headerName="Content-Type" id="_setHeader1">
                 <simple>application/json</simple>
@@ -73,7 +43,7 @@
             </marshal>
         </route>
         <route id="_routeValidaFormulario">
-            <from id="_direct:validaFormulario" uri="direct:validaFormulario"/>
+            <from uri="direct-vm:validaFormulario"/>
             <setHeader headerName="Content-Type" id="_setHeader2">
                 <simple>application/json</simple>
             </setHeader>
@@ -88,7 +58,7 @@
             </marshal>
         </route>
         <route id="_routeEnviaCorreo">
-            <from id="_direct:enviaCorreo" uri="direct:enviaCorreo"/>
+            <from uri="direct-vm:enviaCorreo"/>
             <setHeader headerName="Content-Type" id="_setHeader3">
                 <simple>application/json</simple>
             </setHeader>
@@ -102,7 +72,7 @@
             </marshal>
         </route>
         <route id="_routeBancoTarjeta">
-            <from id="_direct:bancoTarjeta" uri="direct:bancoTarjeta"/>
+            <from uri="direct-vm:bancoTarjeta"/>
             <log id="_log_bancTarjeta" message="${body}"/>
             <setBody id="_setBodybancTarjeta">
                 <simple>${null}</simple>
@@ -121,7 +91,7 @@
             </marshal>
         </route>
         <route id="_routeTipoTarjeta">
-            <from id="_direct:tipoTarjeta" uri="direct:tipoTarjeta"/>
+            <from uri="direct-vm:tipoTarjeta"/>
             <log id="_log_TipoTarjeta" message="${body}"/>
             <setBody id="_setBodyTipoTarjeta">
                 <simple>${null}</simple>
@@ -140,7 +110,7 @@
             </marshal>
         </route>
         <route id="_routeValidaAutorizacion">
-            <from id="_direct:validaAutorizacion" uri="direct:validaAutorizacion"/>
+            <from  uri="direct-vm:validaAutorizacion"/>
             <setHeader headerName="Content-Type" id="_setHeader6">
                 <simple>application/json</simple>
             </setHeader>
