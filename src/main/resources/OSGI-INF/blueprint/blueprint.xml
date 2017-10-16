@@ -2,20 +2,18 @@
 <blueprint xmlns="http://www.osgi.org/xmlns/blueprint/v1.0.0"
     xmlns:cxf="http://camel.apache.org/schema/blueprint/cxf"
     xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http:/camel.apache.org/schema/blueprint/cxf http://camel.apache.org/schema/blueprint/cxf/camel-cxf.xsd  http://www.osgi.org/xmlns/blueprint/v1.0.0 https://www.osgi.org/xmlns/blueprint/v1.0.0/blueprint.xsd                            http://camel.apache.org/schema/blueprint http://camel.apache.org/schema/blueprint/camel-blueprint.xsd">
-    <!-- <cxf:cxfEndpoint
-        address="http://aplicaciones-desa.bicevida.cl/si12/MandatoSAM/ServicioSAMPort"
-        endpointName="s:ServicioSAMPort" id="cxfMandatoSAMWs"
-        serviceName="s:ServicioSAMService"
-        wsdlURL="http://aplicaciones-desa.bicevida.cl/si12/MandatoSAM/ServicioSAMPort?wsdl" xmlns:s="http://ws.vista.sam.vida.bice.cl/">
-        <cxf:properties>
-            <entry key="dataFormat" value="MESSAGE"/>
-        </cxf:properties>
-    </cxf:cxfEndpoint>-->
+    <!-- <cxf:cxfEndpoint address="http://aplicaciones-desa.bicevida.cl/si12/MandatoSAM/ServicioSAMPort" 
+		endpointName="s:ServicioSAMPort" id="cxfMandatoSAMWs" serviceName="s:ServicioSAMService" 
+		wsdlURL="http://aplicaciones-desa.bicevida.cl/si12/MandatoSAM/ServicioSAMPort?wsdl" 
+		xmlns:s="http://ws.vista.sam.vida.bice.cl/"> <cxf:properties> <entry key="dataFormat" 
+		value="MESSAGE"/> </cxf:properties> </cxf:cxfEndpoint> -->
     <bean class="cl.bicevida.processor.AutorizacionProcessResponse" id="valAutPr"/>
     <bean class="cl.bicevida.processor.ObtieneProductoProcessResponse" id="obProPr"/>
     <bean class="cl.bicevida.processor.ValFormularioProcessResponse" id="valFormPr"/>
     <bean class="cl.bicevida.processor.EnviaEmailProcessResponse" id="eePr"/>
     <bean class="cl.bicevida.processor.ExceptionProcessor" id="exPr"/>
+    <bean class="cl.bicevida.processor.TarjetaProcessResponse" id="tarPr"/>
+    <bean class="cl.bicevida.processor.BancoProcessResponse" id="banPr"/>
     <camelContext id="_contextMandato" xmlns="http://camel.apache.org/schema/blueprint">
         <propertyPlaceholder id="properties" location="classpath:/configurationbice.properties"/>
         <onException>
@@ -30,7 +28,6 @@
         </onException>
         <route id="_routeObtenerProductos">
             <from id="_from1" uri="direct-vm:obtenerDetalleProductos"/>
-            <log id="_log_obtProd" message="${body}"/>
             <setHeader headerName="Content-Type" id="_setHeader1">
                 <simple>application/json</simple>
             </setHeader>
@@ -43,7 +40,7 @@
             </marshal>
         </route>
         <route id="_routeValidaFormulario">
-            <from uri="direct-vm:validaFormulario"/>
+            <from id="_from2" uri="direct-vm:validaFormulario"/>
             <setHeader headerName="Content-Type" id="_setHeader2">
                 <simple>application/json</simple>
             </setHeader>
@@ -58,7 +55,7 @@
             </marshal>
         </route>
         <route id="_routeEnviaCorreo">
-            <from uri="direct-vm:enviaCorreo"/>
+            <from id="_from3" uri="direct-vm:enviaCorreo"/>
             <setHeader headerName="Content-Type" id="_setHeader3">
                 <simple>application/json</simple>
             </setHeader>
@@ -72,17 +69,8 @@
             </marshal>
         </route>
         <route id="_routeBancoTarjeta">
-            <from uri="direct-vm:bancoTarjeta"/>
-            <log id="_log_bancTarjeta" message="${body}"/>
-            <setBody id="_setBodybancTarjeta">
-                <simple>${null}</simple>
-            </setBody>
-            <to id="callBancTarjeta" uri="{{ohs.url}}/{{cluster.si}}/WSMandatoPatVentaOnline/rest/MandatoPatVentaOnline/bancosTarjeta?bridgeEndpoint=true"/>
-            <convertBodyTo id="_convertBody_bancTarjeta" type="java.lang.String"/>
-            <unmarshal id="_unmarshal_BancTarjeta">
-                <jaxb contextPath="cl.bicevida.types"
-                    partClass="cl.bicevida.types.ResponseBancosTarjeta" prettyPrint="true"/>
-            </unmarshal>
+            <from id="_from4" uri="direct-vm:bancoTarjeta"/>
+            <process id="banPrID" ref="banPr"/>
             <setHeader headerName="Content-Type" id="_setHeader4">
                 <simple>application/json</simple>
             </setHeader>
@@ -91,18 +79,12 @@
             </marshal>
         </route>
         <route id="_routeTipoTarjeta">
-            <from uri="direct-vm:tipoTarjeta"/>
-            <log id="_log_TipoTarjeta" message="${body}"/>
-            <setBody id="_setBodyTipoTarjeta">
-                <simple>${null}</simple>
-            </setBody>
-            <to id="callTipoTarjeta" uri="{{ohs.url}}/{{cluster.si}}/WSMandatoPatVentaOnline/rest/MandatoPatVentaOnline/tipoTarjeta?bridgeEndpoint=true"/>
-            <convertBodyTo id="_convertBody_TipoTarjeta" type="java.lang.String"/>
-            <unmarshal id="_unmarshal_TipoTarjeta">
-                <jaxb contextPath="cl.bicevida.types"
-                    partClass="cl.bicevida.types.ResponseTiposTarjeta" prettyPrint="true"/>
-            </unmarshal>
+            <from id="_from5" uri="direct-vm:tipoTarjeta"/>
+            <process id="tarPrID" ref="tarPr"/>
             <setHeader headerName="Content-Type" id="_setHeader5">
+                <simple>application/json</simple>
+            </setHeader>
+            <setHeader headerName="Accept" id="acceptId">
                 <simple>application/json</simple>
             </setHeader>
             <marshal id="_marshal_TipoTarjeta">
@@ -110,7 +92,7 @@
             </marshal>
         </route>
         <route id="_routeValidaAutorizacion">
-            <from  uri="direct-vm:validaAutorizacion"/>
+            <from id="_from6" uri="direct-vm:validaAutorizacion"/>
             <setHeader headerName="Content-Type" id="_setHeader6">
                 <simple>application/json</simple>
             </setHeader>
